@@ -18,6 +18,8 @@ import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.TreeMap;
 
 /**
@@ -87,6 +89,12 @@ public class Parser {
         tokenizer.setProblemCollector(errors);
     }
 
+    protected Parser(Reader input, Scope scope, Set<Character> specialIdStarters, Set<Character> specialIdTerminators) {
+        this.scope = scope;
+        tokenizer = new Tokenizer(input, specialIdStarters, specialIdTerminators);
+        tokenizer.setProblemCollector(errors);
+    }
+
     /**
      * Registers a new function which can be referenced from within an expression.
      * <p>
@@ -109,6 +117,10 @@ public class Parser {
      */
     public static Expression parse(String input) throws ParseException {
         return new Parser(new StringReader(input), new Scope()).parse();
+    }
+
+    public static Expression parse(String input, Scope scope, Set<Character> specialIdStarters, Set<Character> specialIdTerminators) throws ParseException {
+        return new Parser(new StringReader(input), scope, specialIdStarters, specialIdTerminators).parse();
     }
 
     /**
@@ -161,8 +173,8 @@ public class Parser {
         if (tokenizer.current().isNotEnd()) {
             Token token = tokenizer.consume();
             errors.add(ParseError.error(token,
-                                        String.format("Unexpected token: '%s'. Expected an expression.",
-                                                      token.getSource())));
+                    String.format("Unexpected token: '%s'. Expected an expression.",
+                            token.getSource())));
         }
         if (!errors.isEmpty()) {
             throw ParseException.create(errors);
@@ -295,21 +307,25 @@ public class Parser {
      * in natural order (from left to right).
      */
     protected Expression reOrder(Expression left, Expression right, BinaryOperation.Op op) {
-        if (right instanceof BinaryOperation rightOp
-            && !rightOp.isSealed()
-            && rightOp.getOp().getPriority() == op.getPriority()) {
-            replaceLeft(rightOp, left, op);
-            return right;
+        if (right instanceof BinaryOperation) {
+            BinaryOperation rightOp = (BinaryOperation) right;
+            if (!rightOp.isSealed()
+                    && rightOp.getOp().getPriority() == op.getPriority()) {
+                replaceLeft(rightOp, left, op);
+                return right;
+            }
         }
         return new BinaryOperation(op, left, right);
     }
 
     protected void replaceLeft(BinaryOperation target, Expression newLeft, BinaryOperation.Op op) {
-        if (target.getLeft() instanceof BinaryOperation leftOp
-            && !leftOp.isSealed()
-            && leftOp.getOp().getPriority() == op.getPriority()) {
-            replaceLeft(leftOp, newLeft, op);
-            return;
+        if (target.getLeft() instanceof BinaryOperation) {
+            BinaryOperation leftOp = (BinaryOperation) target.getLeft();
+            if (!leftOp.isSealed()
+                    && leftOp.getOp().getPriority() == op.getPriority()) {
+                replaceLeft(leftOp, newLeft, op);
+                return;
+            }
         }
         target.setLeft(new BinaryOperation(op, newLeft, target.getLeft()));
     }
@@ -375,10 +391,28 @@ public class Parser {
             }
             Token variableName = tokenizer.consume();
             try {
+                Variable variable = scope.getVariable(variableName.getContents());
+                if (Objects.isNull(variable)) {
+                    scope.create(variableName.getContents());
+                }
                 return new VariableReference(scope.getVariable(variableName.getContents()));
             } catch (@SuppressWarnings("UnusedCatchParameter") IllegalArgumentException e) {
                 errors.add(ParseError.error(variableName,
-                                            String.format("Unknown variable: '%s'", variableName.getContents())));
+                        String.format("Unknown variable: '%s'", variableName.getContents())));
+                return new Constant(0);
+            }
+        }
+        if(tokenizer.current().isSpecialIdentifier()){
+            Token variableName = tokenizer.consume();
+            try {
+                Variable variable = scope.getVariable(variableName.getContents());
+                if (Objects.isNull(variable)) {
+                    scope.create(variableName.getContents());
+                }
+                return new VariableReference(scope.getVariable(variableName.getContents()));
+            } catch (@SuppressWarnings("UnusedCatchParameter") IllegalArgumentException e) {
+                errors.add(ParseError.error(variableName,
+                        String.format("Unknown variable: '%s'", variableName.getContents())));
                 return new Constant(0);
             }
         }
@@ -423,16 +457,16 @@ public class Parser {
                 } else {
                     Token token = tokenizer.consume();
                     errors.add(ParseError.error(token,
-                                                String.format("Unexpected token: '%s'. Expected a valid quantifier.",
-                                                              token.getSource())));
+                            String.format("Unexpected token: '%s'. Expected a valid quantifier.",
+                                    token.getSource())));
                 }
             }
             return new Constant(value);
         }
         Token token = tokenizer.consume();
         errors.add(ParseError.error(token,
-                                    String.format("Unexpected token: '%s'. Expected an expression.",
-                                                  token.getSource())));
+                String.format("Unexpected token: '%s'. Expected an expression.",
+                        token.getSource())));
         return Constant.EMPTY;
     }
 
@@ -462,11 +496,11 @@ public class Parser {
         }
         if (call.getParameters().size() != fun.getNumberOfArguments() && fun.getNumberOfArguments() >= 0) {
             errors.add(ParseError.error(funToken,
-                                        String.format(
-                                                "Number of arguments for function '%s' do not match. Expected: %d, Found: %d",
-                                                funToken.getContents(),
-                                                fun.getNumberOfArguments(),
-                                                call.getParameters().size())));
+                    String.format(
+                            "Number of arguments for function '%s' do not match. Expected: %d, Found: %d",
+                            funToken.getContents(),
+                            fun.getNumberOfArguments(),
+                            call.getParameters().size())));
             return Constant.EMPTY;
         }
         return call;
@@ -486,9 +520,9 @@ public class Parser {
             tokenizer.consume();
         } else {
             errors.add(ParseError.error(tokenizer.current(),
-                                        String.format("Unexpected token '%s'. Expected: '%s'",
-                                                      tokenizer.current().getSource(),
-                                                      trigger)));
+                    String.format("Unexpected token '%s'. Expected: '%s'",
+                            tokenizer.current().getSource(),
+                            trigger)));
         }
     }
 }

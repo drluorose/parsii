@@ -122,6 +122,18 @@ public class Tokenizer extends Lookahead<Token> {
         addStringDelimiter('\'', '\0');
     }
 
+
+    public Tokenizer(Reader input, Set<Character> specialIdStarters, Set<Character> specialIdTerminators) {
+        this.input = new LookaheadReader(input);
+        this.input.setProblemCollector(problemCollector);
+
+        // Setup default string handling
+        addStringDelimiter('"', '\\');
+        addStringDelimiter('\'', '\0');
+        this.specialIdStarters.addAll(specialIdStarters);
+        this.specialIdTerminators.addAll(specialIdTerminators);
+    }
+
     @Override
     public void setProblemCollector(List<ParseError> problemCollector) {
         super.setProblemCollector(problemCollector);
@@ -189,8 +201,8 @@ public class Tokenizer extends Lookahead<Token> {
         }
 
         problemCollector.add(ParseError.error(input.current(),
-                                              String.format("Invalid character in input: '%s'",
-                                                            input.current().getStringValue())));
+                String.format("Invalid character in input: '%s'",
+                        input.current().getStringValue())));
         input.consume();
         return fetch();
     }
@@ -216,9 +228,9 @@ public class Tokenizer extends Lookahead<Token> {
     @SuppressWarnings("squid:S1067")
     protected boolean isAtStartOfNumber() {
         return input.current().isDigit()
-               || input.current().is('-') && input.next().isDigit()
-               || input.current().is('-') && input.next().is('.') && input.next(2).isDigit()
-               || input.current().is('.') && input.next().isDigit();
+                || input.current().is('-') && input.next().isDigit()
+                || input.current().is('-') && input.next().is('.') && input.next(2).isDigit()
+                || input.current().is('.') && input.next().isDigit();
     }
 
     /**
@@ -233,9 +245,9 @@ public class Tokenizer extends Lookahead<Token> {
     @SuppressWarnings("squid:S1067")
     protected boolean isAtBracket(boolean inSymbol) {
         return input.current().is(brackets) || !inSymbol
-                                               && treatSinglePipeAsBracket
-                                               && input.current().is('|')
-                                               && !input.next().is('|');
+                && treatSinglePipeAsBracket
+                && input.current().is('|')
+                && !input.next().is('|');
     }
 
     /**
@@ -339,8 +351,8 @@ public class Tokenizer extends Lookahead<Token> {
                 result.addToSource(input.consume());
                 if (!handleStringEscape(separator, escapeChar, result)) {
                     problemCollector.add(ParseError.error(input.next(),
-                                                          String.format("Cannot use '%s' as escaped character",
-                                                                        input.next().getStringValue())));
+                            String.format("Cannot use '%s' as escaped character",
+                                    input.next().getStringValue())));
                 }
             } else {
                 result.addToContent(input.consume());
@@ -429,8 +441,8 @@ public class Tokenizer extends Lookahead<Token> {
      */
     protected Token handleKeywords(Token idToken) {
         String keyword = keywords.get(keywordsCaseSensitive ?
-                                      idToken.getContents().intern() :
-                                      idToken.getContents().toLowerCase().intern());
+                idToken.getContents().intern() :
+                idToken.getContents().toLowerCase().intern());
         if (keyword != null) {
             Token keywordToken = Token.create(Token.TokenType.KEYWORD, idToken);
             keywordToken.setTrigger(keyword);
@@ -455,6 +467,11 @@ public class Tokenizer extends Lookahead<Token> {
         return current.isDigit() || current.isLetter() || current.is('_');
     }
 
+
+    protected boolean isSpecialIdentifierChar(Char current) {
+        return !specialIdTerminators.contains(new Character(current.getValue()));
+    }
+
     /**
      * Reads and returns a special id.
      *
@@ -463,9 +480,10 @@ public class Tokenizer extends Lookahead<Token> {
     protected Token fetchSpecialId() {
         Token result = Token.create(Token.TokenType.SPECIAL_ID, input.current());
         result.addToTrigger(input.consume());
-        while (isIdentifierChar(input.current())) {
+        while (isSpecialIdentifierChar(input.current())) {
             result.addToContent(input.consume());
         }
+        result.addToTrigger(input.consume());
         return handleKeywords(result);
     }
 
@@ -482,9 +500,9 @@ public class Tokenizer extends Lookahead<Token> {
         Token result = Token.create(Token.TokenType.SYMBOL, input.current());
         result.addToTrigger(input.consume());
         if (result.isSymbol("*") && input.current().is('*')
-            || result.isSymbol("&") && input.current().is('&')
-            || result.isSymbol("|") && input.current().is('|')
-            || result.isSymbol() && input.current().is('=')) {
+                || result.isSymbol("&") && input.current().is('&')
+                || result.isSymbol("|") && input.current().is('|')
+                || result.isSymbol() && input.current().is('=')) {
             result.addToTrigger(input.consume());
         }
         return result;
@@ -510,11 +528,11 @@ public class Tokenizer extends Lookahead<Token> {
         }
 
         return !(isAtBracket(true)
-                 || isAtStartOfBlockComment(false)
-                 || isAtStartOfLineComment(false)
-                 || isAtStartOfNumber()
-                 || isAtStartOfIdentifier()
-                 || stringDelimiters.containsKey(ch.getValue()));
+                || isAtStartOfBlockComment(false)
+                || isAtStartOfLineComment(false)
+                || isAtStartOfNumber()
+                || isAtStartOfIdentifier()
+                || stringDelimiters.containsKey(ch.getValue()));
     }
 
     /**
@@ -531,7 +549,7 @@ public class Tokenizer extends Lookahead<Token> {
             } else if (input.current().is(decimalSeparator)) {
                 result = handleDecimalSeparatorInNumber(result);
             } else if (input.current().is(scientificNotationSeparator) || input.current()
-                                                                               .is(alternateScientificNotationSeparator)) {
+                    .is(alternateScientificNotationSeparator)) {
                 result = handleScientificSeparatorInNumber(result);
             } else {
                 result.addToContent(input.consume());
@@ -543,9 +561,9 @@ public class Tokenizer extends Lookahead<Token> {
 
     private boolean isAtNumericCharacter() {
         return input.current().isDigit()
-               || input.current().is(decimalSeparator)
-               || isAtEligibleGroupingSeparator()
-               || isAtEligibleScientificSeparator();
+                || input.current().is(decimalSeparator)
+                || isAtEligibleGroupingSeparator()
+                || isAtEligibleScientificSeparator();
     }
 
     private boolean isAtEligibleGroupingSeparator() {
@@ -554,7 +572,7 @@ public class Tokenizer extends Lookahead<Token> {
 
     private boolean isAtEligibleScientificSeparator() {
         if (input.current().is(scientificNotationSeparator) || input.current()
-                                                                    .is(alternateScientificNotationSeparator)) {
+                .is(alternateScientificNotationSeparator)) {
             return input.next().isDigit() || input.next().is('+') || input.next().is('-');
         }
 

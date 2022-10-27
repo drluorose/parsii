@@ -17,7 +17,10 @@ import parsii.eval.Scope;
 import parsii.eval.Variable;
 import parsii.tokenizer.ParseException;
 
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.Assert.*;
 
@@ -313,5 +316,35 @@ public class ParserTest {
         assertTrue(child.find("X") != null);
         assertTrue(child.remove("X") == null);
         assertTrue(child.find("X") != null);
+    }
+
+    @Test
+    public void testCreateVar() throws ParseException {
+        Scope scope = new Scope();
+        Expression expression = Parser.parse("3 + F001 * 4", scope);
+
+        Variable f001 = scope.getVariable("F001");
+        Collection<Variable> vc = scope.getLocalVariables();
+        for (Variable v : vc) {
+            System.out.println(v);
+        }
+        System.out.println(f001);
+        f001.setValue(10);
+        System.out.println(expression.evaluate());
+    }
+
+
+    @Test
+    public void testDeviceId() throws ParseException {
+        Scope scope = new Scope();
+        Set<Character> a = new HashSet<>();
+        a.add('$');
+        Set<Character> b = new HashSet<>();
+        b.add(':');
+
+
+        Expression expression = Parser.parse("a-$845686_jgswj-1654851908111:+1", scope,a,b);
+        Collection<Variable> variables = scope.getVariables();
+        System.out.println(variables);
     }
 }

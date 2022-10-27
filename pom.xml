@@ -1,16 +1,26 @@
 <project>
     <modelVersion>4.0.0</modelVersion>
-    <parent>
-        <groupId>com.scireum</groupId>
-        <artifactId>sirius-parent</artifactId>
-        <version>10.1.1</version>
-    </parent>
+    <groupId>com.tgde</groupId>
     <artifactId>parsii</artifactId>
     <version>DEVELOPMENT-SNAPSHOT</version>
     <packaging>jar</packaging>
     <name>parsii</name>
     <description>parsii is a super fast and lightweight parser and expression evaluator</description>
     <url>https://github.com/scireum/parsii</url>
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>8</maven.compiler.source>
+        <maven.compiler.target>8</maven.compiler.target>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.2</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
 
     <repositories>
         <repository>
