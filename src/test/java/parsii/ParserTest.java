@@ -338,13 +338,18 @@ public class ParserTest {
     public void testDeviceId() throws ParseException {
         Scope scope = new Scope();
         Set<Character> a = new HashSet<>();
+        a.add('{');
         a.add('$');
         Set<Character> b = new HashSet<>();
-        b.add(':');
+        b.add('}');
 
 
-        Expression expression = Parser.parse("a-$845686_jgswj-1654851908111:+1", scope,a,b);
-        Collection<Variable> variables = scope.getVariables();
+        Expression expression = Parser.parse("a-({845686_jgswj-1654851908111}+1)", scope, a, b);
+        Collection<Variable> variables = scope.getLocalVariables();
+        for (Variable variable : variables) {
+            variable.setValue(12);
+        }
         System.out.println(variables);
+        System.out.println(expression.evaluate());
     }
 }

@@ -218,6 +218,10 @@ public class Tokenizer extends Lookahead<Token> {
         return specialIdStarters.contains(input.current().getValue());
     }
 
+    protected boolean isAtStartOfSpecialId(Char c) {
+        return specialIdStarters.contains(c.getValue());
+    }
+
     /**
      * Determines if the underlying input is looking at the start of a number.
      * <p>
@@ -467,9 +471,14 @@ public class Tokenizer extends Lookahead<Token> {
         return current.isDigit() || current.isLetter() || current.is('_');
     }
 
-
-    protected boolean isSpecialIdentifierChar(Char current) {
-        return !specialIdTerminators.contains(new Character(current.getValue()));
+    /**
+     * 是否是特殊id的结束字符
+     *
+     * @param current
+     * @return
+     */
+    protected boolean isAtTerminateIdentifierChar(Char current) {
+        return specialIdTerminators.contains(current.getValue());
     }
 
     /**
@@ -479,12 +488,25 @@ public class Tokenizer extends Lookahead<Token> {
      */
     protected Token fetchSpecialId() {
         Token result = Token.create(Token.TokenType.SPECIAL_ID, input.current());
-        result.addToTrigger(input.consume());
-        while (isSpecialIdentifierChar(input.current())) {
-            result.addToContent(input.consume());
-        }
-        result.addToTrigger(input.consume());
-        return handleKeywords(result);
+        do {
+            Char currentChar = input.consume();
+            if (isAtStartOfSpecialId(currentChar)) {
+                result.addToTrigger(currentChar);
+            } else if (isAtTerminateIdentifierChar(currentChar)) {
+                result.addToTrigger(currentChar);
+                break;
+            } else {
+                result.addToContent(currentChar);
+            }
+        } while (true);
+        return result;
+//
+//        result.addToTrigger(input.consume());
+//        while (isSpecialIdentifierChar(input.current())) {
+//            result.addToContent(input.consume());
+//        }
+//        result.addToTrigger(input.consume());
+//        return handleKeywords(result);
     }
 
     /**
